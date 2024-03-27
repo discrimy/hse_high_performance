@@ -30,7 +30,7 @@ public:
     }
     mutex_condition.notify_one();
   }
-  void stop()
+  void finish()
   {
     {
       std::unique_lock<std::mutex> lock(queue_mutex);
@@ -42,15 +42,6 @@ public:
       active_thread.join();
     }
     threads.clear();
-  }
-  bool busy()
-  {
-    bool pool_busy;
-    {
-      std::unique_lock<std::mutex> lock(queue_mutex);
-      pool_busy = !jobs.empty();
-    }
-    return pool_busy;
   }
 
 private:
@@ -64,7 +55,7 @@ private:
         mutex_condition.wait(
             lock, [this]
             { return !jobs.empty() || should_terminate; });
-        if (should_terminate)
+        if (should_terminate && jobs.empty())
         {
           return;
         }
@@ -136,11 +127,7 @@ int main()
     }
   }
 
-  while (pool.busy())
-  {
-    sleep(0.5);
-  }
-  pool.stop();
+  pool.finish();
 
   image.close();
   std::cout << "Done!" << std::endl;
